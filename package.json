@@ -11,9 +11,10 @@
   "types": "src/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "ci": "(npm run build && npm run rollup) & npm t & wait",
+    "prepublishOnly": "npm run ci && npm run rollup",
     "test": "jest",
-    "prepublishOnly": "npm run build",
-    "npmPublish": "npm publish"
+    "rollup": "rollup -c"
   },
   "repository": {
     "type": "git",
