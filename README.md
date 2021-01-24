@@ -1,6 +1,6 @@
 ## Installation - NPM
 
 ```sh
-npm i rxjs-microstore
+npm i spa-emulator
 ```
 
