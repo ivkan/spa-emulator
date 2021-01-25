@@ -6,16 +6,17 @@ import { safeArray } from './utils/safe-array';
 import { safeString } from './utils/safe-string';
 import { isString } from './utils/is-string';
 import { isElement } from './utils/is-element';
-import { findElements } from './utils/find-elements';
+import { findElement, findElements } from './utils/find-elements';
 import { isLink } from './utils/is-link';
 
 export class SpaEmulator
 {
-    hasProtocol = new RegExp('^(http|https):', 'i');
-    isLocal     = new RegExp('^(http:|https:|)//' + window.location.host, 'i');
-    isDownload  = new RegExp('\.(iso|torrent|sig|zip)$');
+    private hasProtocol = new RegExp('^(http|https):', 'i');
+    private isLocal     = new RegExp('^(http:|https:|)//' + window.location.host, 'i');
+    private isDownload  = new RegExp('\.(iso|torrent|sig|zip)$');
 
     private newBodyScripts: HTMLScriptElement[] = [];
+    private readonly urlParser = document.createElement('a');
     private readonly options: SpaEmulatorOptions;
 
     /**
@@ -130,47 +131,43 @@ export class SpaEmulator
      */
     private reloadHead(newHead: HTMLHeadElement): void
     {
-        this.getHead().innerHTML = newHead.innerHTML;
-
         // Append title
-        // const title = findElement('title', newHead);
-        // if (title)
-        // {
-        //   document.title = title.textContent;
-        // }
+        const title = findElement('title', newHead);
+        if (title)
+        {
+          document.title = title.textContent;
+        }
 
-        // Clear current header
+        const liveHeadElements = Array.from(this.getHead().querySelectorAll('*'));
 
-        // const liveHeadElements = Array.from(this.getHead().querySelectorAll('*'));
-        //
-        // newHead.querySelectorAll('*').forEach(newElement =>
-        // {
-        //   let i = liveHeadElements.length;
-        //
-        //   while (--i >= 0)
-        //   {
-        //     if (newElement.isEqualNode(liveHeadElements[i]))
-        //     {
-        //       liveHeadElements.splice(i, 1);
-        //       break;
-        //     }
-        //   }
-        //   if (i < 0)
-        //   {
-        //     this.getHead().append(newElement);
-        //   }
-        // });
-        //
-        // this.getHead().querySelectorAll('*').forEach(old =>
-        // {
-        //   liveHeadElements.forEach((liveEl) =>
-        //   {
-        //     if (old.isEqualNode(liveEl))
-        //     {
-        //       removeElement(old);
-        //     }
-        //   });
-        // });
+        newHead.querySelectorAll('*').forEach(newElement =>
+        {
+          let i = liveHeadElements.length;
+
+          while (--i >= 0)
+          {
+            if (newElement.isEqualNode(liveHeadElements[i]))
+            {
+              liveHeadElements.splice(i, 1);
+              break;
+            }
+          }
+          if (i < 0)
+          {
+            this.getHead().append(newElement);
+          }
+        });
+
+        this.getHead().querySelectorAll('*').forEach(old =>
+        {
+          liveHeadElements.forEach((liveEl) =>
+          {
+            if (old.isEqualNode(liveEl))
+            {
+              removeElement(old);
+            }
+          });
+        });
     }
 
     /**
@@ -196,17 +193,6 @@ export class SpaEmulator
                     removeElement<HTMLScriptElement>(script as HTMLScriptElement)
                 );
             }
-
-            // Remove scripts from new body
-            // for (const element of Array.from(newBody.querySelectorAll('*')))
-            // {
-            //   if (isScript(element))
-            //   {
-            //     this.newBodyScripts.push(
-            //       removeElement<HTMLScriptElement>(element as HTMLScriptElement)
-            //     );
-            //   }
-            // }
 
             // Append new elements to body
             Array.from(newBody.children).forEach(element =>
@@ -251,7 +237,7 @@ export class SpaEmulator
      */
     private loadPage(tag: string, href: string, data: any, navigate: boolean): void
     {
-        let target, base, url, htag;
+        let target, url, htag;
 
         const openInNewWindow = () =>
         {
@@ -328,33 +314,51 @@ export class SpaEmulator
 
             case 'href':
             {
-                base        = window.location.href.split('#')[0];
-                [url, htag] = href.split('#');
-                if (htag && (!url || url === base))
+                const request = new XMLHttpRequest();
+                request.open('GET', href, true);
+                request.onload  = () =>
                 {
-                    return this.scrollTop(htag);
-                }
-                if (!htag || (url && (url !== base)))
-                {
-                    const request = new XMLHttpRequest();
-                    request.open('GET', href, true);
-                    request.onload  = () =>
+                    if (request.status >= 200 && request.status < 400)
                     {
-                        if (request.status >= 200 && request.status < 400)
-                        {
-                            replacePage(request);
-                        }
-                        else
-                        {
-                            alert('Unable to locate url ' + href);
-                        }
-                    };
-                    request.onerror = () =>
+                        replacePage(request);
+                    }
+                    else
                     {
                         alert('Unable to locate url ' + href);
-                    };
-                    request.send();
-                }
+                    }
+                };
+                request.onerror = () =>
+                {
+                    alert('Unable to locate url ' + href);
+                };
+                request.send();
+                // base        = window.location.href.split('#')[0];
+                // [url, htag] = href.split('#');
+                // if (htag && (!url || url === base))
+                // {
+                //     return this.scrollTop(htag);
+                // }
+                // if (!htag || (url && (url !== base)))
+                // {
+                //     const request = new XMLHttpRequest();
+                //     request.open('GET', href, true);
+                //     request.onload  = () =>
+                //     {
+                //         if (request.status >= 200 && request.status < 400)
+                //         {
+                //             replacePage(request);
+                //         }
+                //         else
+                //         {
+                //             alert('Unable to locate url ' + href);
+                //         }
+                //     };
+                //     request.onerror = () =>
+                //     {
+                //         alert('Unable to locate url ' + href);
+                //     };
+                //     request.send();
+                // }
             }
         }
     }
@@ -397,8 +401,8 @@ export class SpaEmulator
      */
     private setListener(): void
     {
-        document.addEventListener('click', ev => this.handleClick(ev));
-        document.addEventListener('submit', ev => this.handleFormSubmit(ev));
+        document.addEventListener('click', ev => this.onClick(ev));
+        document.addEventListener('submit', ev => this.onFormSubmit(ev));
         // wrap the browser's 'BACK' button
         window.addEventListener('popstate', () => this.backButton());
 
@@ -410,63 +414,123 @@ export class SpaEmulator
      */
     private removeListener(): void
     {
-        document.removeEventListener('click', ev => this.handleClick(ev));
-        document.removeEventListener('submit', ev => this.handleFormSubmit(ev));
+        document.removeEventListener('click', ev => this.onClick(ev));
+        document.removeEventListener('submit', ev => this.onFormSubmit(ev));
         window.removeEventListener('popstate', () => this.backButton());
 
         this.log('Remove listeners');
     }
 
-    private handleFormSubmit(ev: any): void
+    /**
+     * Handle form submit event
+     */
+    private onFormSubmit(event: any): boolean
     {
+        if (event.defaultPrevented)
+        {
+            return;
+        }
         if (document && document.activeElement && document.activeElement['form'])
         {
-            this.handle(ev, document.activeElement['form'], 'action');
+            const self = document.activeElement['form'] as HTMLFormElement;
+
+            //
+            //  for POST requests we're going to use the results from
+            //  FormData, and add the name/value of the submit button
+            //
+            const data   = new FormData(self);
+            const button = document.activeElement as HTMLButtonElement;
+            if (button.name)
+            {
+                data.append(button.name, button.value);
+
+                event.preventDefault();
+
+                const href = self.getAttribute('action');
+                this.loadPage('action', href, data, true);
+            }
         }
     }
 
     /**
      * Handle click event
      */
-    private handleClick(ev: MouseEvent): void
+    private onClick(event: MouseEvent): boolean
     {
-        const handle = () =>
+        if (event.defaultPrevented)
         {
-            let target = ev.target as HTMLElement;
-            while (target && !isLink(target))
-            {
-                target = target.parentElement;
-            }
-            if (isLink(target))
-            {
-                this.handle(ev, target, 'href');
-            }
-        };
+            return;
+        }
 
-        if (!isString(this.options.catchLinksOutsideOf))
+        const { button, ctrlKey, metaKey } = event;
+        let target                         = event.target as HTMLElement;
+
+        if (isString(this.options.catchLinksOutsideOf) && target.closest(this.options.catchLinksOutsideOf))
         {
-            handle();
+            return true;
         }
-        else if (isString(this.options.catchLinksOutsideOf) && !(ev.target as HTMLElement).closest(this.options.catchLinksOutsideOf))
+
+        while (target && !(target instanceof HTMLAnchorElement))
         {
-            handle();
+            target = target.parentElement;
         }
+        if (target instanceof HTMLAnchorElement)
+        {
+            return this.handleAnchorClick(target, button, ctrlKey, metaKey);
+        }
+
+        // Allow the click to pass through
+        return true;
+    }
+
+    /**
+     * Handle user's anchor click
+     */
+    private handleAnchorClick(anchor: HTMLAnchorElement, button = 0, ctrlKey = false, metaKey = false): boolean
+    {
+        // Check for modifier keys and non-left-button, which indicate the user wants to control navigation
+        if (button !== 0 || ctrlKey || metaKey)
+        {
+            return true;
+        }
+
+        // If there is a target and it is not `_self` then we take this
+        // as a signal that it doesn't want to be intercepted.
+        // TODO: should we also allow an explicit `_self` target to opt-out?
+        const anchorTarget = anchor.target;
+        if (anchorTarget && anchorTarget !== '_self')
+        {
+            return true;
+        }
+
+        if (anchor.getAttribute('download') != null)
+        {
+            return true; // let the download happen
+        }
+
+        const { pathname, search, hash } = anchor;
+        const relativeUrl = pathname + search + hash;
+        this.urlParser.href = relativeUrl;
+
+        // don't navigate if external link or has extension
+        if ( anchor.href !== this.urlParser.href ||
+            !/\/[^/.]*$/.test(pathname) ) {
+            return true;
+        }
+
+        // approved for navigation
+        // event.preventDefault();
+        this.loadPage('href', relativeUrl, null, true);
+        return false;
     }
 
     /**
      * Handle page event
      */
-    private handle(event: Event, self: HTMLElement, tag: string): boolean
+    private handle(event: Event, self: HTMLElement, tag: string, href?: string): boolean
     {
-        //  if we have no url, or the url is outside the site ...
-        const href = self.getAttribute(tag);
-
         this.log('Handle page event', { href, tag });
 
-        if (!href || (href === '#') || this.outside(href))
-        {
-            return false;
-        }
         let not_supported = false, data = null, button = null;
         //
         //  make sure we've not been beaten to the punch
