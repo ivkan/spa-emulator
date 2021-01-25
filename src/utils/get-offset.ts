@@ -1,4 +1,4 @@
-export function getOffset(el): {top: number, left: number}
+export function getOffset(el: any): {top: number, left: number}
 {
   const box = el.getBoundingClientRect();
 

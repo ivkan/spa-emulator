@@ -403,7 +403,7 @@ export class SpaEmulator
     window.removeEventListener('popstate', () => this.backButton());
   }
 
-  private handleFormSubmit(ev): void
+  private handleFormSubmit(ev: any): void
   {
     if (document && document.activeElement && document.activeElement['form'])
     {
@@ -457,7 +457,7 @@ export class SpaEmulator
         //  FormData, and add the name/value of the submit button
         //
         data   = new FormData(self as HTMLFormElement);
-        button = document.activeElement;
+        button = document.activeElement as HTMLButtonElement;
         if (button.name)
         {
           data.append(button.name, button.value);

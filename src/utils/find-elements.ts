@@ -6,7 +6,7 @@ const classRe = /^\.(?:[\w-]|\\.|[^\x00-\xa0])*$/;
 
 export function findElements(selector: string, context: HTMLElement): Element[]
 {
-    const arrayLike = !selector || (!isDocument(context) && !isElement(context))
+    const arrayLike: any = !selector || (!isDocument(context) && !isElement(context))
         ? []
         : classRe.test(selector)
             ? context.getElementsByClassName(selector.slice(1))
