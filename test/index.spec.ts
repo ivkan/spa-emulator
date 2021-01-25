@@ -1,5 +1,5 @@
-import { Store } from '../src/spa-emulator';
+import { SpaEmulator } from '../src/spa-emulator';
 
-test("Microstore is exported", () => {
-  expect(Store).toBeInstanceOf(Object);
+test("SpaEmulator is exported", () => {
+  expect(SpaEmulator).toBeInstanceOf(Object);
 });

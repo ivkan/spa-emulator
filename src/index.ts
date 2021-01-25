@@ -1,2 +1,2 @@
 export { SpaEmulator } from './spa-emulator';
-export { SpaEmulatorOptions } from './options';
+export { SpaEmulatorOptions, SpaEmulatorIgnoreElement } from './options';

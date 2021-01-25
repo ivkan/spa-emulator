@@ -4,7 +4,7 @@ import minify from 'rollup-plugin-babel-minify';
 import pkg from './package.json';
 
 export default [{
-    input: 'src/index.js',
+    input: 'dist/browser.js',
     output: {
         name: "SpaEmulator",
         file: pkg.browser,

@@ -10,4 +10,6 @@ export interface SpaEmulatorOptions
     ignoreElements?: SpaEmulatorIgnoreElement[];
     ignoreOutsideUrls?: RegExp[];
     catchLinksOutsideOf?: string;
+    openImageInNewWindow?: boolean;
+    debug?: boolean;
 }
