@@ -15,7 +15,6 @@ export class SpaEmulator
     private isLocal     = new RegExp('^(http:|https:|)//' + window.location.host, 'i');
     private isDownload  = new RegExp('\.(iso|torrent|sig|zip)$');
 
-    private oldHeadStyles: Element[]            = [];
     private newBodyScripts: HTMLScriptElement[] = [];
     private readonly urlParser                  = document.createElement('a');
     private readonly options: SpaEmulatorOptions;
@@ -135,14 +134,6 @@ export class SpaEmulator
         const oldHeadStyles: Element[] = [];
         const currentHead              = this.getHead();
 
-        // Get old styles
-        // currentHead
-        //     .querySelectorAll('link[rel=stylesheet], style')
-        //     .forEach(element =>
-        //     {
-        //         this.oldHeadStyles.push(element);
-        //     });
-
         // Cleaning up everything except styles
         for (const element of Array.from(currentHead.children))
         {
@@ -174,37 +165,6 @@ export class SpaEmulator
         {
             document.title = title.textContent;
         }
-
-        // const liveHeadElements = Array.from(this.getHead().querySelectorAll('*'));
-        //
-        // newHead.querySelectorAll('*').forEach(newElement =>
-        // {
-        //   let i = liveHeadElements.length;
-        //
-        //   while (--i >= 0)
-        //   {
-        //     if (newElement.isEqualNode(liveHeadElements[i]))
-        //     {
-        //       liveHeadElements.splice(i, 1);
-        //       break;
-        //     }
-        //   }
-        //   if (i < 0)
-        //   {
-        //     this.getHead().append(newElement);
-        //   }
-        // });
-        //
-        // this.getHead().querySelectorAll('*').forEach(old =>
-        // {
-        //   liveHeadElements.forEach((liveEl) =>
-        //   {
-        //     if (old.isEqualNode(liveEl))
-        //     {
-        //       removeElement(old);
-        //     }
-        //   });
-        // });
     }
 
     /**
@@ -533,9 +493,6 @@ export class SpaEmulator
             return true;
         }
 
-        // If there is a target and it is not `_self` then we take this
-        // as a signal that it doesn't want to be intercepted.
-        // TODO: should we also allow an explicit `_self` target to opt-out?
         const anchorTarget = anchor.target;
         if (anchorTarget && anchorTarget !== '_self')
         {
@@ -552,8 +509,7 @@ export class SpaEmulator
         this.urlParser.href              = relativeUrl;
 
         // don't navigate if external link or has extension
-        if (anchor.href !== this.urlParser.href ||
-            !/\/[^/.]*$/.test(pathname))
+        if (location.hostname !== this.urlParser.hostname)
         {
             return true;
         }
