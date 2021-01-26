@@ -15,6 +15,7 @@ export class SpaEmulator
     private isLocal     = new RegExp('^(http:|https:|)//' + window.location.host, 'i');
     private isDownload  = new RegExp('\.(iso|torrent|sig|zip)$');
 
+    private oldHeadStyles: Element[]            = [];
     private newBodyScripts: HTMLScriptElement[] = [];
     private readonly urlParser                  = document.createElement('a');
     private readonly options: SpaEmulatorOptions;
@@ -104,19 +105,19 @@ export class SpaEmulator
      */
     private isProtectedElement(element: HTMLElement): boolean
     {
-        for (const ignore of safeArray<SpaEmulatorIgnoreElement>(this.options.ignoreElements))
+        for (const ignore of safeArray<SpaEmulatorIgnoreElement>(this.options.protectedElements))
         {
             if (safeString(ignore.tagName).toLowerCase() === element.tagName.toLowerCase())
             {
-                if (!isString(ignore.innerHTMLIncludes) && !isString(ignore.srcIncludes))
+                if (!isString(ignore.innerHTMLHas) && !isString(ignore.srcHas))
                 {
                     return true
                 }
-                else if (isString(ignore.innerHTMLIncludes) && element.innerHTML.includes(ignore.innerHTMLIncludes))
+                else if (isString(ignore.innerHTMLHas) && element.innerHTML.includes(ignore.innerHTMLHas))
                 {
                     return true;
                 }
-                else if (isString(ignore.srcIncludes) && safeString(element['src']).includes(ignore.srcIncludes))
+                else if (isString(ignore.srcHas) && safeString(element['src']).includes(ignore.srcHas))
                 {
                     return true;
                 }
@@ -126,45 +127,55 @@ export class SpaEmulator
         return false;
     }
 
+    private replaceContent(newContent: any): void
+    {
+        document.open();
+        document.write(newContent);
+        document.close();
+    }
+
     /**
      * Add new entries to page head and remove obsoletes
      */
     private reloadHead(newHead: HTMLHeadElement): void
     {
-        const oldHeadStyles: Element[] = [];
-        const currentHead              = this.getHead();
-
-        // Cleaning up everything except styles
-        for (const element of Array.from(currentHead.children))
-        {
-            if (isStyle(element))
-            {
-                oldHeadStyles.push(element);
-            }
-            else
-            {
-                removeElement(element);
-            }
-        }
-
-        // Append new elements
-        for (const element of Array.from(newHead.children))
-        {
-            currentHead.append(element);
-        }
-
-        // Remove old styles
-        for (const element of oldHeadStyles)
-        {
-            removeElement(element);
-        }
-
         // Append title
         const title = findElement('title', newHead);
         if (title)
         {
             document.title = title.textContent;
         }
+
+        const liveHeadElements = Array.from(this.getHead().querySelectorAll('*'));
+
+        newHead.querySelectorAll('*').forEach(newElement =>
+        {
+            let i = liveHeadElements.length;
+
+            while (--i >= 0)
+            {
+                if (newElement.isEqualNode(liveHeadElements[i]))
+                {
+                    liveHeadElements.splice(i, 1);
+                    break;
+                }
+            }
+            if (i < 0)
+            {
+                this.getHead().append(newElement);
+            }
+        });
+
+        this.getHead().querySelectorAll('*').forEach(oldElement =>
+        {
+            liveHeadElements.forEach((liveEl) =>
+            {
+                if (oldElement.isEqualNode(liveEl))
+                {
+                    removeElement(oldElement);
+                }
+            });
+        });
     }
 
     /**
@@ -231,6 +242,17 @@ export class SpaEmulator
         }
     }
 
+    private reloadProtectedElement(newNode: HTMLHtmlElement): void
+    {
+        for (const ignore of safeArray<SpaEmulatorIgnoreElement>(this.options.protectedElements))
+        {
+            if (isString(ignore.selector))
+            {
+                const elements = newNode.querySelectorAll(ignore.selector);
+            }
+        }
+    }
+
     /**
      * Bulk of the work, replace the current page with a new one
      */
@@ -261,12 +283,17 @@ export class SpaEmulator
                     const newNode     = document.createElement('html');
                     newNode.innerHTML = data;
 
-                    const newHead = this.getHead(newNode);
-                    const newBody = this.getBody(newNode);
+                    this.reloadProtectedElement(newNode);
+                    this.replaceContent(newNode.innerHTML);
 
-                    this.reloadBody(newBody);
-                    this.reloadHead(newHead);
-                    this.appendBodyScripts();
+                    // const widget = this.getBody().querySelector('immerss-widget');
+
+                    // const newHead = this.getHead(newNode);
+                    // const newBody = this.getBody(newNode);
+                    //
+                    // this.reloadBody(newBody);
+                    // this.reloadHead(newHead);
+                    // this.appendBodyScripts();
 
                     [url, htag] = href.split('#');
                     this.setPosition(tag, htag);
@@ -454,7 +481,7 @@ export class SpaEmulator
     /**
      * Handle click event
      */
-    private onClick(event: MouseEvent): boolean
+    private onClick(event: MouseEvent): void
     {
         if (event.defaultPrevented)
         {
@@ -464,9 +491,9 @@ export class SpaEmulator
         const { button, ctrlKey, metaKey } = event;
         let target                         = event.target as HTMLElement;
 
-        if (isString(this.options.catchLinksOutsideOf) && target.closest(this.options.catchLinksOutsideOf))
+        if (isString(this.options.ignoreLinkInside) && target.closest(this.options.ignoreLinkInside))
         {
-            return true;
+            return;
         }
 
         while (target && !(target instanceof HTMLAnchorElement))
@@ -475,11 +502,10 @@ export class SpaEmulator
         }
         if (target instanceof HTMLAnchorElement)
         {
-            return this.handleAnchorClick(target, button, ctrlKey, metaKey);
+            this.log('Anchor:', target);
+            event.preventDefault();
+            this.handleAnchorClick(target, button, ctrlKey, metaKey);
         }
-
-        // Allow the click to pass through
-        return true;
     }
 
     /**

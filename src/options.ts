@@ -1,15 +1,17 @@
 export interface SpaEmulatorIgnoreElement
 {
     tagName: string;
-    innerHTMLIncludes?: string;
-    srcIncludes?: string;
+    innerHTMLHas?: string;
+    srcHas?: string;
+    selector?: string;
+    hasInnerHtml?: string;
 }
 
 export interface SpaEmulatorOptions
 {
-    ignoreElements?: SpaEmulatorIgnoreElement[];
+    protectedElements?: SpaEmulatorIgnoreElement[];
     ignoreOutsideUrls?: RegExp[];
-    catchLinksOutsideOf?: string;
+    ignoreLinkInside?: string;
     openImageInNewWindow?: boolean;
     debug?: boolean;
 }
