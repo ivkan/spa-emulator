@@ -7,7 +7,7 @@ import { safeString } from './utils/safe-string';
 import { isString } from './utils/is-string';
 import { isElement } from './utils/is-element';
 import { findElement, findElements } from './utils/find-elements';
-import { isLink } from './utils/is-link';
+import { isStyle } from './utils/is-style';
 
 export class SpaEmulator
 {
@@ -15,8 +15,9 @@ export class SpaEmulator
     private isLocal     = new RegExp('^(http:|https:|)//' + window.location.host, 'i');
     private isDownload  = new RegExp('\.(iso|torrent|sig|zip)$');
 
+    private oldHeadStyles: Element[]            = [];
     private newBodyScripts: HTMLScriptElement[] = [];
-    private readonly urlParser = document.createElement('a');
+    private readonly urlParser                  = document.createElement('a');
     private readonly options: SpaEmulatorOptions;
 
     /**
@@ -131,43 +132,79 @@ export class SpaEmulator
      */
     private reloadHead(newHead: HTMLHeadElement): void
     {
+        const oldHeadStyles: Element[] = [];
+        const currentHead              = this.getHead();
+
+        // Get old styles
+        // currentHead
+        //     .querySelectorAll('link[rel=stylesheet], style')
+        //     .forEach(element =>
+        //     {
+        //         this.oldHeadStyles.push(element);
+        //     });
+
+        // Cleaning up everything except styles
+        for (const element of Array.from(currentHead.children))
+        {
+            if (isStyle(element))
+            {
+                oldHeadStyles.push(element);
+            }
+            else
+            {
+                removeElement(element);
+            }
+        }
+
+        // Append new elements
+        for (const element of Array.from(newHead.children))
+        {
+            currentHead.append(element);
+        }
+
+        // Remove old styles
+        for (const element of oldHeadStyles)
+        {
+            removeElement(element);
+        }
+
         // Append title
         const title = findElement('title', newHead);
         if (title)
         {
-          document.title = title.textContent;
+            document.title = title.textContent;
         }
 
-        const liveHeadElements = Array.from(this.getHead().querySelectorAll('*'));
-
-        newHead.querySelectorAll('*').forEach(newElement =>
-        {
-          let i = liveHeadElements.length;
-
-          while (--i >= 0)
-          {
-            if (newElement.isEqualNode(liveHeadElements[i]))
-            {
-              liveHeadElements.splice(i, 1);
-              break;
-            }
-          }
-          if (i < 0)
-          {
-            this.getHead().append(newElement);
-          }
-        });
-
-        this.getHead().querySelectorAll('*').forEach(old =>
-        {
-          liveHeadElements.forEach((liveEl) =>
-          {
-            if (old.isEqualNode(liveEl))
-            {
-              removeElement(old);
-            }
-          });
-        });
+        // const liveHeadElements = Array.from(this.getHead().querySelectorAll('*'));
+        //
+        // newHead.querySelectorAll('*').forEach(newElement =>
+        // {
+        //   let i = liveHeadElements.length;
+        //
+        //   while (--i >= 0)
+        //   {
+        //     if (newElement.isEqualNode(liveHeadElements[i]))
+        //     {
+        //       liveHeadElements.splice(i, 1);
+        //       break;
+        //     }
+        //   }
+        //   if (i < 0)
+        //   {
+        //     this.getHead().append(newElement);
+        //   }
+        // });
+        //
+        // this.getHead().querySelectorAll('*').forEach(old =>
+        // {
+        //   liveHeadElements.forEach((liveEl) =>
+        //   {
+        //     if (old.isEqualNode(liveEl))
+        //     {
+        //       removeElement(old);
+        //     }
+        //   });
+        // });
     }
 
     /**
@@ -177,8 +214,10 @@ export class SpaEmulator
     {
         try
         {
+            const currentBody = this.getBody();
+
             // Clear current body
-            for (const element of Array.from(this.getBody().children))
+            for (const element of Array.from(currentBody.children))
             {
                 if (!this.isProtectedElement(element as HTMLElement))
                 {
@@ -199,7 +238,7 @@ export class SpaEmulator
             {
                 if (!this.isProtectedElement(element as HTMLElement) && isElement(element))
                 {
-                    this.getBody().appendChild(element);
+                    currentBody.appendChild(element);
                 }
             });
         }
@@ -509,12 +548,13 @@ export class SpaEmulator
         }
 
         const { pathname, search, hash } = anchor;
-        const relativeUrl = pathname + search + hash;
-        this.urlParser.href = relativeUrl;
+        const relativeUrl                = pathname + search + hash;
+        this.urlParser.href              = relativeUrl;
 
         // don't navigate if external link or has extension
-        if ( anchor.href !== this.urlParser.href ||
-            !/\/[^/.]*$/.test(pathname) ) {
+        if (anchor.href !== this.urlParser.href ||
+            !/\/[^/.]*$/.test(pathname))
+        {
             return true;
         }
 
